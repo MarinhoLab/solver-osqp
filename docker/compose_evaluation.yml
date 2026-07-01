@@ -1,0 +1,12 @@
+services:
+  solver_evaluation:
+    build:
+      context: ../
+      dockerfile: docker/Dockerfile
+    environment:
+      - TIMEOUT=20
+    command: /bin/bash -c "
+      pip install marinholab-solvers-qpoases --break-system-packages
+      && cd /root/solver-osqp
+      && pip install . --break-system-packages
+      && python3 evaluation/compare_qpoases_osqp.py"
