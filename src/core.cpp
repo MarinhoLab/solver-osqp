@@ -34,7 +34,9 @@ PYBIND11_MODULE(_core, m) {
 
     osqp_solver.def(py::init<const OSQP_Solver::Configuration&>(),
                        py::arg("configuration") = OSQP_Solver::Configuration());
-    osqp_solver.def("solve_quadratic_program",&OSQP_Solver::solve_quadratic_program,".");
+    osqp_solver.def("solve_quadratic_program",&OSQP_Solver::solve_quadratic_program,".",
+                    py::arg("H"), py::arg("f"), py::arg("A"), py::arg("b"), py::arg("Aeq"), py::arg("beq"),
+                    py::arg("x0") = VectorXd());
 
     // Helps evaluating the wrapper when versions show any issues
     osqp_solver.def("test_vectorxd",&OSQP_Solver::test_vectorxd,".");

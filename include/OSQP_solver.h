@@ -96,9 +96,12 @@ class OSQP_Solver
          * @param b the m x 1 value for the inequality constraints.
          * @param Aeq the m x n matrix of equality constraints.
          * @param beq the m x 1 value for the inequality constraints.
+         * @param x0 optional n x 1 warm-start for the primal variable x, e.g. a known feasible
+         *   solution. Passed to OSQP via osqp_warm_start(). Pass an empty vector (the default)
+         *   to skip warm-starting. Must be compatible with H.rows() when provided.
          * @return the optimal x
          */
-        VectorXd solve_quadratic_program(const MatrixXd& H, const VectorXd& f, const MatrixXd& A, const VectorXd& b, const MatrixXd& Aeq, const VectorXd& beq);
+        VectorXd solve_quadratic_program(const MatrixXd& H, const VectorXd& f, const MatrixXd& A, const VectorXd& b, const MatrixXd& Aeq, const VectorXd& beq, const VectorXd& x0 = VectorXd());
 
         VectorXd test_vectorxd(const VectorXd& v);
         MatrixXd test_matrixxd(const MatrixXd& m);

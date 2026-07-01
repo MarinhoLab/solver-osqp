@@ -113,7 +113,7 @@ void evaluate_osqp_exitflag(OSQPInt exitflag, const std::string& context)
     }
 }
 
-VectorXd OSQP_Solver::solve_quadratic_program(const MatrixXd& H, const VectorXd& f, const MatrixXd& A, const VectorXd& b, const MatrixXd& Aeq, const VectorXd& beq)
+VectorXd OSQP_Solver::solve_quadratic_program(const MatrixXd& H, const VectorXd& f, const MatrixXd& A, const VectorXd& b, const MatrixXd& Aeq, const VectorXd& beq, const VectorXd& x0)
 {
     const OSQPInt PROBLEM_SIZE = static_cast<OSQPInt>(H.rows());
     const OSQPInt INEQUALITY_CONSTRAINT_SIZE = static_cast<OSQPInt>(b.size());
@@ -126,6 +126,10 @@ VectorXd OSQP_Solver::solve_quadratic_program(const MatrixXd& H, const VectorXd&
         throw std::runtime_error("OSQP_Solver::solve_quadratic_program(): H must be symmetric. H.rows()="+std::to_string(H.rows())+" but H.cols()="+std::to_string(H.cols())+".");
     if(f.size()!=H.rows())
         throw std::runtime_error("OSQP_Solver::solve_quadratic_program(): f must be compatible with H. H.rows()=H.cols()="+std::to_string(H.rows())+" but f.size()="+std::to_string(f.size())+".");
+
+    //Optional warm-start (e.g. a known feasible solution) for the primal variable x.
+    if(x0.size()!=0 && x0.size()!=PROBLEM_SIZE)
+        throw std::runtime_error("OSQP_Solver::solve_quadratic_program(): x0 must be compatible with H. H.rows()=H.cols()="+std::to_string(H.rows())+" but x0.size()="+std::to_string(x0.size())+".");
 
     //Inequality constraints
     if(b.size()!=A.rows())
@@ -215,6 +219,14 @@ VectorXd OSQP_Solver::solve_quadratic_program(const MatrixXd& H, const VectorXd&
                                                      P_csc.x.data(), nullptr, static_cast<OSQPInt>(P_csc.x.size()),
                                                      A_csc.x.data(), nullptr, static_cast<OSQPInt>(A_csc.x.size())),
                                "osqp_update_data_mat()");
+    }
+
+    //If the user provided a warm-start (e.g. a known feasible solution) for x, forward it to
+    //OSQP. The dual variable y is left untouched (nullptr) since only x is user-provided.
+    if(x0.size() != 0)
+    {
+        auto x0_vec = _vectorxd_to_std_vector_double(x0);
+        evaluate_osqp_exitflag(osqp_warm_start(osqp_solver_, x0_vec.data(), nullptr), "osqp_warm_start()");
     }
 
     evaluate_osqp_exitflag(osqp_solve(osqp_solver_), "osqp_solve()");
