@@ -182,6 +182,8 @@ VectorXd OSQP_Solver::solve_quadratic_program(const MatrixXd& H, const VectorXd&
         settings->max_iter = configuration_.maximum_iterations;
         settings->eps_abs = configuration_.eps_absolute;
         settings->eps_rel = configuration_.eps_relative;
+        settings->eps_prim_inf = configuration_.eps_primal_infeasibility;
+        settings->eps_dual_inf = configuration_.eps_dual_infeasibility;
         settings->verbose = configuration_.verbose;
         settings->polishing = configuration_.polishing;
         settings->warm_starting = configuration_.warm_starting;

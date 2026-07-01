@@ -19,6 +19,9 @@ class OSQP_Solver
             //Absolute/relative solution tolerances. See OSQPSettings::eps_abs/eps_rel.
             OSQPFloat eps_absolute = OSQP_EPS_ABS;
             OSQPFloat eps_relative = OSQP_EPS_REL;
+            //Primal/dual infeasibility tolerances. See OSQPSettings::eps_prim_inf/eps_dual_inf.
+            OSQPFloat eps_primal_infeasibility = OSQP_EPS_PRIM_INF;
+            OSQPFloat eps_dual_infeasibility = OSQP_EPS_DUAL_INF;
             //boolean; write out solver progress. See OSQPSettings::verbose.
             OSQPInt verbose = 0;
             //boolean; polish ADMM solution. See OSQPSettings::polishing.

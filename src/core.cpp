@@ -25,6 +25,8 @@ PYBIND11_MODULE(_core, m) {
     osqp_configuration.def_readwrite("maximum_iterations", &OSQP_Solver::Configuration::maximum_iterations);
     osqp_configuration.def_readwrite("eps_absolute", &OSQP_Solver::Configuration::eps_absolute);
     osqp_configuration.def_readwrite("eps_relative", &OSQP_Solver::Configuration::eps_relative);
+    osqp_configuration.def_readwrite("eps_primal_infeasibility", &OSQP_Solver::Configuration::eps_primal_infeasibility);
+    osqp_configuration.def_readwrite("eps_dual_infeasibility", &OSQP_Solver::Configuration::eps_dual_infeasibility);
     osqp_configuration.def_readwrite("verbose", &OSQP_Solver::Configuration::verbose);
     osqp_configuration.def_readwrite("polishing", &OSQP_Solver::Configuration::polishing);
     osqp_configuration.def_readwrite("warm_starting", &OSQP_Solver::Configuration::warm_starting);
