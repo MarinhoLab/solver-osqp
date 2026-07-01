@@ -1,0 +1,34 @@
+[build-system]
+requires = [
+    "setuptools>=42",
+    "wheel",
+    "ninja",
+    "cmake>=3.18",
+    "setuptools-git-versioning>=2.0,<3"
+]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = 'marinholab-solvers-osqp'
+authors = [
+    {name = "Murilo M. Marinho", email = "murilomarinho@ieee.org"}
+]
+maintainers = [
+    {name = "Murilo M. Marinho", email = "murilomarinho@ieee.org"}
+]
+dynamic = ["version"]
+dependencies=[
+]
+description = "OSQP wrapper for Python with binaries."
+readme = "README.md"
+requires-python = ">= 3.9"
+
+# https://pypi.org/project/setuptools-git-versioning/
+[tool.setuptools-git-versioning]
+enabled = true
+# https://stackoverflow.com/questions/73605607/how-to-use-setuptools-scm
+dev_template = "{tag}.{ccount}"
+dirty_template = "{tag}.{ccount}"
+
+[project.scripts]
+osqp_example = "marinholab.solvers.osqp.example:main"

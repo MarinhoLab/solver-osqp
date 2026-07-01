@@ -12,6 +12,17 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 find_package(Eigen3 REQUIRED)
 
+set(PYBIND11_FINDPYTHON ON)
+add_subdirectory(pybind11)
+pybind11_add_module(_core MODULE
+        src/core.cpp
+        src/core_function.cpp
+    )
+
+target_include_directories(_core PRIVATE
+    ${PROJECT_SOURCE_DIR}/include
+    )
+
 # https://stackoverflow.com/questions/38296756/what-is-the-idiomatic-way-in-cmake-to-add-the-fpic-compiler-option
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 # CMAKE was not passing BUILD_SHARED_LIBS nicely to the add_subdirectory.
@@ -25,15 +36,7 @@ set(OSQP_BUILD_DEMO_EXE FALSE CACHE BOOL "x" FORCE)
 set(OSQP_BUILD_UNITTESTS FALSE CACHE BOOL "x" FORCE)
 add_subdirectory(osqp)
 
-# core_function.cpp is compiled on its own (i.e. without the pybind11 Python wrapper, see
-# solver-qpoases/src/core.cpp for what that would look like) into a small static library so that
-# it can be linked into other targets (e.g. a future Python module or tests).
-add_library(marinholab_solver_osqp STATIC
-        src/core_function.cpp
-    )
-
-target_include_directories(marinholab_solver_osqp PUBLIC
-    ${PROJECT_SOURCE_DIR}/include
-    )
-
-target_link_libraries(marinholab_solver_osqp PUBLIC Eigen3::Eigen osqpstatic)
+target_link_libraries(_core PRIVATE Eigen3::Eigen osqpstatic)
+# Version is dynamically obtained. See pyproject.toml
+# Activating this causes issues with Windows compilation.
+# target_compile_definitions(_core PRIVATE VERSION_INFO=${PROJECT_VERSION})
