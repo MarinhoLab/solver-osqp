@@ -1,0 +1,11 @@
+services:
+  solver_osqp:
+    build:
+      context: ../
+      dockerfile: docker/Dockerfile
+    environment:
+      - TIMEOUT=20
+    command: /bin/bash -c "
+      cd /root/solver-osqp
+      && pip install . --break-system-packages
+      && osqp_example"
