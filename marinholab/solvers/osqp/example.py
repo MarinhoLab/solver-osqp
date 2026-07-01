@@ -137,10 +137,37 @@ def nones():
                                             None
                                             )
 
+def warmstart_example():
+    solver = osqp.Solver()
+
+    x = np.array([1.0, 0.0, 0.0, 0.0])
+    xd = np.array([0.0, 0.0, 0.0, 1.0])
+
+    x_tilde = (x - xd).reshape((4, 1))
+
+    J = np.eye(4)
+    H = J.T @ J
+    f = 1.0 * J.T @ x_tilde
+
+    A = np.array([x[0], x[1], x[2], x[3]]).reshape((1, 4))
+    b = np.array([0.0]).reshape((1, 1))
+
+    # Solve once, without a warm-start, to obtain a first solution.
+    u = solver.solve_quadratic_program(H, f, A, b, None, None)
+    print(f"Solution without warm-start: {u}")
+
+    # A known feasible solution (here, the solution found above) can be used to
+    # warm-start the next solve, which typically reduces the number of ADMM
+    # iterations OSQP needs to converge.
+    x0 = u
+    u_warmstarted = solver.solve_quadratic_program(H, f, A, b, None, None, x0)
+    print(f"Solution with warm-start:    {u_warmstarted}")
+
 def main():
     positivedefinite()
     configuration_example()
     nones()
+    warmstart_example()
 
 
 if __name__ == "__main__":
