@@ -44,7 +44,7 @@ PYBIND11_MODULE(_core, m) {
                        py::arg("configuration") = OSQP_Solver::Configuration());
     osqp_solver.def("solve_quadratic_program",&OSQP_Solver::solve_quadratic_program,".",
                     py::arg("H"), py::arg("f"), py::arg("A"), py::arg("b"), py::arg("Aeq"), py::arg("beq"),
-                    py::arg("x0") = VectorXd());
+                    py::arg("x0") = VectorXd(), py::arg("y0") = VectorXd());
     osqp_solver.def("get_info",&OSQP_Solver::get_info,
                     "Returns named solution-quality values (obj_val, dual_obj_val, prim_res, dual_res) "
                     "and the dual solution (dual_solution) from the last successful call to "

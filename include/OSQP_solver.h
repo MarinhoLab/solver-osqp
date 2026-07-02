@@ -119,9 +119,13 @@ class OSQP_Solver
          * @param x0 optional n x 1 warm-start for the primal variable x, e.g. a known feasible
          *   solution. Passed to OSQP via osqp_warm_start(). Pass an empty vector (the default)
          *   to skip warm-starting. Must be compatible with H.rows() when provided.
+         * @param y0 optional warm-start for the dual variable y, e.g. a dual solution obtained
+         *   from get_info().dual_solution in a previous call. Passed to OSQP via
+         *   osqp_warm_start(). Pass an empty vector (the default) to skip dual warm-starting.
+         *   Must have b.size()+beq.size() entries when provided.
          * @return the optimal x
          */
-        VectorXd solve_quadratic_program(const MatrixXd& H, const VectorXd& f, const MatrixXd& A, const VectorXd& b, const MatrixXd& Aeq, const VectorXd& beq, const VectorXd& x0 = VectorXd());
+        VectorXd solve_quadratic_program(const MatrixXd& H, const VectorXd& f, const MatrixXd& A, const VectorXd& b, const MatrixXd& Aeq, const VectorXd& beq, const VectorXd& x0 = VectorXd(), const VectorXd& y0 = VectorXd());
 
         /**
          * @brief Returns named solution-quality values (obj_val, dual_obj_val, prim_res, dual_res)

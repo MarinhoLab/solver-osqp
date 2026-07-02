@@ -6,7 +6,7 @@ class Solver:
         self.configuration = configuration
         self.solver = OSQP_Solver(configuration)
 
-    def solve_quadratic_program(self, H, f, A, b, Aeq, beq, x0=None):
+    def solve_quadratic_program(self, H, f, A, b, Aeq, beq, x0=None, y0=None):
 
         if (A is None and b is not None) or (b is None and A is not None):
             raise ValueError(f"A={A} and b={b} must both be None or both not None.")
@@ -26,7 +26,14 @@ class Solver:
         if x0 is None:
             x0 = np.zeros((0,))
 
-        return self.solver.solve_quadratic_program(H, f, A, b, Aeq, beq, x0)
+        # y0 is an optional warm-start (e.g. a dual solution obtained from
+        # get_info().dual_solution in a previous call) for the dual variable. When omitted,
+        # an empty array is forwarded and OSQP solves without dual warm-starting. Its size
+        # must match b.size()+beq.size() as actually sent to the solver above.
+        if y0 is None:
+            y0 = np.zeros((0,))
+
+        return self.solver.solve_quadratic_program(H, f, A, b, Aeq, beq, x0, y0)
 
     def get_info(self):
         """

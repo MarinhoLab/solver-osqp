@@ -158,10 +158,44 @@ def warmstart_example():
 
     # A known feasible solution (here, the solution found above) can be used to
     # warm-start the next solve, which typically reduces the number of ADMM
-    # iterations OSQP needs to converge.
+    # iterations OSQP needs to converge. Similarly, the dual solution obtained
+    # from get_info().dual_solution can be used to warm-start the dual variable y0.
     x0 = u
-    u_warmstarted = solver.solve_quadratic_program(H, f, A, b, None, None, x0)
+    y0 = solver.get_info().dual_solution
+    u_warmstarted = solver.solve_quadratic_program(H, f, A, b, None, None, x0, y0)
     print(f"Solution with warm-start:    {u_warmstarted}")
+
+def dual_warmstart_example():
+    solver = osqp.Solver()
+
+    x = np.array([1.0, 0.0, 0.0, 0.0])
+    xd = np.array([0.0, 0.0, 0.0, 1.0])
+
+    x_tilde = (x - xd).reshape((4, 1))
+
+    J = np.eye(4)
+    H = J.T @ J
+    f = 1.0 * J.T @ x_tilde
+
+    A = np.array([x[0], x[1], x[2], x[3]]).reshape((1, 4))
+    b = np.array([0.0]).reshape((1, 1))
+
+    # Solve once, without any warm-start, to obtain a first solution and its
+    # associated dual solution (Lagrange multipliers), via get_info().dual_solution.
+    u = solver.solve_quadratic_program(H, f, A, b, None, None)
+    y0 = solver.get_info().dual_solution
+    print(f"Solution without warm-start:          {u}")
+    print(f"Dual solution:                         {y0}")
+
+    # y0 can be used on its own (i.e. without a primal x0) to warm-start only the
+    # dual variable y of the next solve.
+    u_dual_warmstarted = solver.solve_quadratic_program(H, f, A, b, None, None, None, y0)
+    print(f"Solution with dual warm-start only:    {u_dual_warmstarted}")
+
+    # x0 and y0 can also be combined to warm-start both the primal and dual
+    # variables at the same time.
+    u_both_warmstarted = solver.solve_quadratic_program(H, f, A, b, None, None, u, y0)
+    print(f"Solution with primal+dual warm-start:  {u_both_warmstarted}")
 
 def info_example():
     solver = osqp.Solver()
@@ -196,6 +230,7 @@ def main():
     configuration_example()
     nones()
     warmstart_example()
+    dual_warmstart_example()
     info_example()
 
 
