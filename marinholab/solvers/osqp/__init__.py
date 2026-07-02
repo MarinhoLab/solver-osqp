@@ -7,3 +7,4 @@ from .solver import Solver
 # Interface won't change, so this will do for now
 from marinholab.solvers.osqp._core import OSQP_Solver
 Configuration = OSQP_Solver.Configuration
+Info = OSQP_Solver.Info

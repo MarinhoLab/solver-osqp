@@ -12,6 +12,9 @@ namespace M3
 // https://stackoverflow.com/questions/53408962/try-to-understand-compiler-error-message-default-member-initializer-required-be
 OSQP_Solver::Configuration::Configuration() = default;
 
+// https://stackoverflow.com/questions/53408962/try-to-understand-compiler-error-message-default-member-initializer-required-be
+OSQP_Solver::Info::Info() = default;
+
 OSQP_Solver::OSQP_Solver(const Configuration& configuration):
     osqp_solve_first_time_(true),
     osqp_solver_(nullptr),
@@ -238,6 +241,19 @@ VectorXd OSQP_Solver::solve_quadratic_program(const MatrixXd& H, const VectorXd&
     std::vector<double> return_value_std(osqp_solver_->solution->x, osqp_solver_->solution->x + PROBLEM_SIZE);
 
     return _std_vector_double_to_vectorxd(return_value_std);
+}
+
+OSQP_Solver::Info OSQP_Solver::get_info() const
+{
+    if(osqp_solver_ == nullptr || osqp_solver_->info == nullptr)
+        throw std::runtime_error("OSQP_Solver::get_info(): no solution information available. solve_quadratic_program() must be called successfully first.");
+
+    Info info;
+    info.obj_val = osqp_solver_->info->obj_val;
+    info.dual_obj_val = osqp_solver_->info->dual_obj_val;
+    info.prim_res = osqp_solver_->info->prim_res;
+    info.dual_res = osqp_solver_->info->dual_res;
+    return info;
 }
 
 // Helper functions to help evaluate the wrapper when needed.

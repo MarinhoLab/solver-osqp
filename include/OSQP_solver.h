@@ -34,6 +34,23 @@ class OSQP_Solver
             bool use_hotstart = true;
             Configuration(); //https://stackoverflow.com/questions/53408962/try-to-understand-compiler-error-message-default-member-initializer-required-be
         };
+
+        /**
+         * @brief Named solution-quality values obtained from the last successful call to
+         * solve_quadratic_program(). See OSQPInfo in osqp_api_types.h for further details.
+         */
+        struct Info
+        {
+            //Primal objective value. See OSQPInfo::obj_val.
+            OSQPFloat obj_val = 0.0;
+            //Dual objective value. See OSQPInfo::dual_obj_val.
+            OSQPFloat dual_obj_val = 0.0;
+            //Norm of the primal residual. See OSQPInfo::prim_res.
+            OSQPFloat prim_res = 0.0;
+            //Norm of the dual residual. See OSQPInfo::dual_res.
+            OSQPFloat dual_res = 0.0;
+            Info(); //https://stackoverflow.com/questions/53408962/try-to-understand-compiler-error-message-default-member-initializer-required-be
+        };
     protected:
         //Holds the CSC (compressed-sparse-column) arrays of a converted Eigen matrix.
         //The vectors own the storage so that it outlives the temporary OSQPCscMatrix
@@ -102,6 +119,14 @@ class OSQP_Solver
          * @return the optimal x
          */
         VectorXd solve_quadratic_program(const MatrixXd& H, const VectorXd& f, const MatrixXd& A, const VectorXd& b, const MatrixXd& Aeq, const VectorXd& beq, const VectorXd& x0 = VectorXd());
+
+        /**
+         * @brief Returns named solution-quality values (obj_val, dual_obj_val, prim_res, dual_res)
+         * from the last successful call to solve_quadratic_program().
+         * @throws std::runtime_error if solve_quadratic_program() has not been called successfully yet.
+         * @return an Info instance with the values populated.
+         */
+        Info get_info() const;
 
         VectorXd test_vectorxd(const VectorXd& v);
         MatrixXd test_matrixxd(const MatrixXd& m);
