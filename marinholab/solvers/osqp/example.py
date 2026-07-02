@@ -163,11 +163,39 @@ def warmstart_example():
     u_warmstarted = solver.solve_quadratic_program(H, f, A, b, None, None, x0)
     print(f"Solution with warm-start:    {u_warmstarted}")
 
+def info_example():
+    solver = osqp.Solver()
+
+    x = np.array([1.0, 0.0, 0.0, 0.0])
+    xd = np.array([0.0, 0.0, 0.0, 1.0])
+
+    x_tilde = (x - xd).reshape((4, 1))
+
+    J = np.eye(4)
+    H = J.T @ J
+    f = 1.0 * J.T @ x_tilde
+
+    A = np.array([x[0], x[1], x[2], x[3]]).reshape((1, 4))
+    b = np.array([0.0]).reshape((1, 1))
+
+    u = solver.solve_quadratic_program(H, f, A, b, None, None)
+    print(f"Solution: {u}")
+
+    # After a successful solve_quadratic_program() call, get_info() returns
+    # named solution-quality values, e.g. objective/dual objective values and
+    # primal/dual residuals.
+    info = solver.get_info()
+    print(f"obj_val:      {info.obj_val}")
+    print(f"dual_obj_val: {info.dual_obj_val}")
+    print(f"prim_res:     {info.prim_res}")
+    print(f"dual_res:     {info.dual_res}")
+
 def main():
     positivedefinite()
     configuration_example()
     nones()
     warmstart_example()
+    info_example()
 
 
 if __name__ == "__main__":
