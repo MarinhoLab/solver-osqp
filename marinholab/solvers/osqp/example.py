@@ -183,12 +183,13 @@ def info_example():
 
     # After a successful solve_quadratic_program() call, get_info() returns
     # named solution-quality values, e.g. objective/dual objective values and
-    # primal/dual residuals.
+    # primal/dual residuals, as well as the dual solution.
     info = solver.get_info()
-    print(f"obj_val:      {info.obj_val}")
-    print(f"dual_obj_val: {info.dual_obj_val}")
-    print(f"prim_res:     {info.prim_res}")
-    print(f"dual_res:     {info.dual_res}")
+    print(f"obj_val:       {info.obj_val}")
+    print(f"dual_obj_val:  {info.dual_obj_val}")
+    print(f"prim_res:      {info.prim_res}")
+    print(f"dual_res:      {info.dual_res}")
+    print(f"dual_solution: {info.dual_solution}")
 
 def main():
     positivedefinite()

@@ -38,6 +38,7 @@ PYBIND11_MODULE(_core, m) {
     osqp_info.def_readonly("dual_obj_val", &OSQP_Solver::Info::dual_obj_val);
     osqp_info.def_readonly("prim_res", &OSQP_Solver::Info::prim_res);
     osqp_info.def_readonly("dual_res", &OSQP_Solver::Info::dual_res);
+    osqp_info.def_readonly("dual_solution", &OSQP_Solver::Info::dual_solution);
 
     osqp_solver.def(py::init<const OSQP_Solver::Configuration&>(),
                        py::arg("configuration") = OSQP_Solver::Configuration());
@@ -46,7 +47,8 @@ PYBIND11_MODULE(_core, m) {
                     py::arg("x0") = VectorXd());
     osqp_solver.def("get_info",&OSQP_Solver::get_info,
                     "Returns named solution-quality values (obj_val, dual_obj_val, prim_res, dual_res) "
-                    "from the last successful call to solve_quadratic_program().");
+                    "and the dual solution (dual_solution) from the last successful call to "
+                    "solve_quadratic_program().");
 
     // Helps evaluating the wrapper when versions show any issues
     osqp_solver.def("test_vectorxd",&OSQP_Solver::test_vectorxd,".");

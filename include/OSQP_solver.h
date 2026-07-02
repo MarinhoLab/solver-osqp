@@ -49,6 +49,9 @@ class OSQP_Solver
             OSQPFloat prim_res = 0.0;
             //Norm of the dual residual. See OSQPInfo::dual_res.
             OSQPFloat dual_res = 0.0;
+            //Dual solution, i.e. the Lagrange multiplier associated with l <= Ax <= u.
+            //See OSQPSolution::y.
+            VectorXd dual_solution;
             Info(); //https://stackoverflow.com/questions/53408962/try-to-understand-compiler-error-message-default-member-initializer-required-be
         };
     protected:
@@ -79,7 +82,7 @@ class OSQP_Solver
         std::vector<double> _vectorxd_to_std_vector_double(const VectorXd& vectorxd);
 
         //Another copy from sas
-        VectorXd _std_vector_double_to_vectorxd(std::vector<double> std_vector_double);
+        VectorXd _std_vector_double_to_vectorxd(std::vector<double> std_vector_double) const;
 
         //Converts a dense n x n matrix into the upper-triangular CSC representation required by OSQP for P.
         static CSCMatrixData _dense_to_csc_upper_triangular(const MatrixXd& M);
@@ -122,7 +125,8 @@ class OSQP_Solver
 
         /**
          * @brief Returns named solution-quality values (obj_val, dual_obj_val, prim_res, dual_res)
-         * from the last successful call to solve_quadratic_program().
+         * and the dual solution (dual_solution) from the last successful call to
+         * solve_quadratic_program().
          * @throws std::runtime_error if solve_quadratic_program() has not been called successfully yet.
          * @return an Info instance with the values populated.
          */

@@ -45,7 +45,7 @@ std::vector<double> OSQP_Solver::_vectorxd_to_std_vector_double(const VectorXd& 
     return vec;
 }
 
-VectorXd OSQP_Solver::_std_vector_double_to_vectorxd(std::vector<double> std_vector_double)
+VectorXd OSQP_Solver::_std_vector_double_to_vectorxd(std::vector<double> std_vector_double) const
 {
     double* ptr = &std_vector_double[0];
     Eigen::Map<Eigen::VectorXd> vec(ptr,std_vector_double.size());
@@ -253,6 +253,16 @@ OSQP_Solver::Info OSQP_Solver::get_info() const
     info.dual_obj_val = osqp_solver_->info->dual_obj_val;
     info.prim_res = osqp_solver_->info->prim_res;
     info.dual_res = osqp_solver_->info->dual_res;
+
+    //The dual solution y (Lagrange multiplier associated with l <= Ax <= u) has
+    //constraint_size_ entries, i.e. the total number of inequality/equality rows used
+    //in the last successful solve_quadratic_program() call.
+    if(constraint_size_ > 0 && osqp_solver_->solution != nullptr && osqp_solver_->solution->y != nullptr)
+    {
+        std::vector<double> y_std(osqp_solver_->solution->y, osqp_solver_->solution->y + constraint_size_);
+        info.dual_solution = _std_vector_double_to_vectorxd(y_std);
+    }
+
     return info;
 }
 

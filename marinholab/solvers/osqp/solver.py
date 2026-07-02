@@ -31,6 +31,7 @@ class Solver:
     def get_info(self):
         """
         Returns named solution-quality values (obj_val, dual_obj_val, prim_res, dual_res)
-        from the last successful call to solve_quadratic_program().
+        and the dual solution (dual_solution) from the last successful call to
+        solve_quadratic_program().
         """
         return self.solver.get_info()
