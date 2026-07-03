@@ -199,10 +199,13 @@ def dual_warmstart_example():
 
 def hierarchical_example():
     """
-    Two-level hierarchical (a.k.a. task-priority) quadratic program, a common
-    pattern in robot control: solve a higher-priority (level 1) task first,
-    then use whatever redundancy is left (i.e. its null space) to optimize a
-    lower-priority (level 2) objective without disturbing the level-1 task.
+    Two-level hierarchical (a.k.a. task-priority) quadratic program, run in a
+    loop while the level-1 target xd[0] sweeps from outside the box
+    constraints on u, to inside, and back outside again. This shows how the
+    level-1 task saturates at the inequality bounds when the desired command
+    is infeasible, tracks it exactly while it is feasible, and how level 2
+    always keeps optimizing the redundant directions without ever disturbing
+    whatever level-1 achieves.
     """
     # Tighten the tolerances (relative to OSQP's defaults) for both levels, so
     # that the level-2 equality constraint that reproduces the level-1 task
@@ -217,8 +220,6 @@ def hierarchical_example():
     solver_2 = osqp.Solver(config)
 
     x = np.array([1.0, 0.0, 0.0, 0.0])
-    xd = np.array([0.0, 0.0, 0.0, 1.0])
-    x_tilde = (x - xd).reshape((4, 1))
 
     # Inequality constraints shared by both levels: a loose box, -2 <= u <= 2,
     # plus a row that requires u[1]+u[2]+u[3] >= 1. This last row does not
@@ -238,37 +239,44 @@ def hierarchical_example():
     # undetermined by the level-1 objective alone (any value satisfying the
     # inequality constraints is equally optimal for level 1).
     J1 = np.array([1.0, 0.0, 0.0, 0.0]).reshape((1, 4))
-    e1 = J1 @ x_tilde
     H1 = J1.T @ J1
-    f1 = J1.T @ e1
-
-    # Level 1 optimizes the (semi-definite) task objective subject to the
-    # inequality constraints only. Note that u[1:] end up satisfying the
-    # inequality constraint but are otherwise arbitrary, since the level-1
-    # objective is blind to them.
-    u1 = solver_1.solve_quadratic_program(H1, f1, A, b, None, None)
-    print(f"Level 1 solution:            {u1}")
-    print(f"Level 1 task value (J1@u1):  {J1 @ u1}")
 
     # Level 2 minimizes the Euclidean norm of the decision variables
-    # (H2 = I, f2 = 0), subject to the same inequality constraints as level 1,
-    # plus an equality constraint that fixes the level-1 task value at the
-    # optimum found above (Aeq = J1, beq = J1@u1). This restricts the level-2
-    # solution to move only within the null space of J1, guaranteeing that it
-    # cannot affect (degrade) the level-1 solution while it optimizes a
-    # lower-priority objective: here, u[1:] converge to the minimum-norm
-    # values that still satisfy u[1]+u[2]+u[3] >= 1, instead of the arbitrary
-    # values level 1 left them at.
+    # (H2 = I, f2 = 0). It reuses the same inequality constraints as level 1
+    # plus an equality constraint (set inside the loop) that fixes the
+    # level-1 task value at whatever optimum level 1 found. This restricts
+    # the level-2 solution to move only within the null space of J1,
+    # guaranteeing that it cannot affect (degrade) the level-1 solution while
+    # it optimizes a lower-priority objective.
     H2 = np.eye(4)
     f2 = np.zeros((4,))
-    Aeq = J1
-    beq = J1 @ u1
 
-    u2 = solver_2.solve_quadratic_program(H2, f2, A, b, Aeq, beq)
-    print(f"Level 2 solution:            {u2}")
-    print(f"Level 2 task value (J1@u2):  {J1 @ u2}")
-    print(f"|J1@u2 - J1@u1|:             {np.abs(J1 @ u2 - J1 @ u1)}")
-    print(f"||u1|| = {np.linalg.norm(u1):.6f}, ||u2|| = {np.linalg.norm(u2):.6f}")
+    # xd[0] sweeps so that the desired level-1 command, u0_desired = xd[0]-x[0],
+    # goes from outside the box constraints (-2 <= u <= 2, i.e. |u0_desired|>2),
+    # to inside (|u0_desired|<=2), and back outside again.
+    for xd0 in np.linspace(-3.0, 5.0, 9):
+        xd = np.array([xd0, 0.0, 0.0, 0.0])
+        x_tilde = (x - xd).reshape((4, 1))
+
+        e1 = J1 @ x_tilde
+        f1 = J1.T @ e1
+
+        # Level 1 optimizes the (semi-definite) task objective subject to the
+        # inequality constraints only. Note that u[1:] end up satisfying the
+        # inequality constraint but are otherwise arbitrary, since the
+        # level-1 objective is blind to them.
+        u1 = solver_1.solve_quadratic_program(H1, f1, A, b, None, None)
+
+        Aeq = J1
+        beq = J1 @ u1
+        u2 = solver_2.solve_quadratic_program(H2, f2, A, b, Aeq, beq)
+
+        u0_desired = xd0 - x[0]
+        feasible = "inside " if abs(u0_desired) <= 2.0 else "outside"
+        print(f"xd[0]={xd0:+.2f} (u0_desired={u0_desired:+.2f}, {feasible} box) | "
+              f"Level 1: u1={u1}, J1@u1={(J1 @ u1).item():+.4f} | "
+              f"Level 2: u2={u2}, J1@u2={(J1 @ u2).item():+.4f}, "
+              f"||u1||={np.linalg.norm(u1):.4f}, ||u2||={np.linalg.norm(u2):.4f}")
 
 def info_example():
     solver = osqp.Solver()
