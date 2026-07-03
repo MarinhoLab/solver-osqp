@@ -204,8 +204,17 @@ def hierarchical_example():
     then use whatever redundancy is left (i.e. its null space) to optimize a
     lower-priority (level 2) objective without disturbing the level-1 task.
     """
-    solver_1 = osqp.Solver()
-    solver_2 = osqp.Solver()
+    # Tighten the tolerances (relative to OSQP's defaults) for both levels, so
+    # that the level-2 equality constraint that reproduces the level-1 task
+    # value (Aeq = J1, beq = J1@u1) is enforced much more precisely, i.e.
+    # J1@u2 ends up much closer to J1@u1 than with the default tolerances.
+    config = osqp.Configuration()
+    config.eps_absolute = 1e-9
+    config.eps_relative = 1e-9
+    config.maximum_iterations = 20000
+
+    solver_1 = osqp.Solver(config)
+    solver_2 = osqp.Solver(config)
 
     x = np.array([1.0, 0.0, 0.0, 0.0])
     xd = np.array([0.0, 0.0, 0.0, 1.0])
@@ -258,6 +267,7 @@ def hierarchical_example():
     u2 = solver_2.solve_quadratic_program(H2, f2, A, b, Aeq, beq)
     print(f"Level 2 solution:            {u2}")
     print(f"Level 2 task value (J1@u2):  {J1 @ u2}")
+    print(f"|J1@u2 - J1@u1|:             {np.abs(J1 @ u2 - J1 @ u1)}")
     print(f"||u1|| = {np.linalg.norm(u1):.6f}, ||u2|| = {np.linalg.norm(u2):.6f}")
 
 def info_example():
