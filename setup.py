@@ -137,6 +137,9 @@ setup(
     packages=[
         "marinholab.solvers.osqp",
     ],
+    package_data={
+        "marinholab.solvers.osqp": ["_core.pyi", "py.typed"],
+    },
     ext_modules=[CMakeExtension('marinholab.solvers.osqp._core')],
     cmdclass={"build_ext": CMakeBuild},
     zip_safe=False,

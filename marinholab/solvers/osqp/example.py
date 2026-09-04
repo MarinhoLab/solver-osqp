@@ -62,9 +62,9 @@ def positivedefinite():
 
 def configuration_example():
     config = osqp.Configuration()
-    config.eps_absolute = 1e-5
-    config.eps_relative = 1e-5
-    config.maximum_iterations = 10000
+    config.eps_abs = 1e-5
+    config.eps_rel = 1e-5
+    config.max_iter = 10000
     config.verbose = 0
     solver = osqp.Solver(config)
 
@@ -212,9 +212,9 @@ def hierarchical_example():
     # value (Aeq = J1, beq = J1@u1) is enforced much more precisely, i.e.
     # J1@u2 ends up much closer to J1@u1 than with the default tolerances.
     config = osqp.Configuration()
-    config.eps_absolute = 1e-9
-    config.eps_relative = 1e-9
-    config.maximum_iterations = 20000
+    config.eps_abs = 1e-9
+    config.eps_rel = 1e-9
+    config.max_iter = 20000
 
     solver_1 = osqp.Solver(config)
     solver_2 = osqp.Solver(config)

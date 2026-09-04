@@ -1,0 +1,17 @@
+# Build artifacts
+build/
+dist/
+*.egg-info/
+*.so
+
+# Python caches
+__pycache__/
+*.py[cod]
+
+# npm (e.g. locally installed pyright)
+node_modules/
+
+# Editors / OS
+.vscode/
+.idea/
+.DS_Store

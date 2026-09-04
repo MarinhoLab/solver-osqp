@@ -14,11 +14,11 @@ which is a dependency of this project. Install them, e.g. with:
     pip install --pre dqrobotics dqrobotics-pyplot
 """
 try:
-    import matplotlib.pyplot as plt
+    import matplotlib.pyplot as plt  # type: ignore[reportMissingImports]
     import numpy as np
-    from dqrobotics import i_, translation, vec4
-    from dqrobotics.robots import KukaLw4Robot
-    import dqrobotics_extensions.pyplot as dqp
+    from dqrobotics import i_, translation, vec4  # type: ignore[reportAttributeAccessIssue]
+    from dqrobotics.robots import KukaLw4Robot  # type: ignore[reportAttributeAccessIssue]
+    import dqrobotics_extensions.pyplot as dqp  # type: ignore[reportAttributeAccessIssue]
 except ImportError as e:
     raise ImportError(
         "This example requires the optional dependencies `dqrobotics` and "
@@ -62,9 +62,9 @@ def main():
     # that the level-2 equality constraint that reproduces the level-1 task
     # (Aeq = Jt, beq = Jt @ u1) is enforced much more precisely.
     config = osqp.Configuration()
-    config.eps_absolute = 1e-9
-    config.eps_relative = 1e-9
-    config.maximum_iterations = 20000
+    config.eps_abs = 1e-9
+    config.eps_rel = 1e-9
+    config.max_iter = 20000
 
     solver_1 = osqp.Solver(config)  # Level 1: end-effector position control
     solver_2 = osqp.Solver(config)  # Level 2: redundancy resolution

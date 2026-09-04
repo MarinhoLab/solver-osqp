@@ -1,21 +1,86 @@
 /**
-Based on the M3::qpOASES_Solver wrapper in solver-qpoases, adapted to use the OSQP solver.
+Based on the marinholab::solvers::qpoases::Solver wrapper in solver-qpoases,
+adapted to use the OSQP solver.
 */
-#include <OSQP_solver.h>
+#include <marinholab/solvers/osqp.h>
 
 #include <stdexcept>
 #include <string>
 
-namespace M3
+namespace marinholab
+{
+
+namespace solvers
+{
+
+namespace osqp
 {
 
 // https://stackoverflow.com/questions/53408962/try-to-understand-compiler-error-message-default-member-initializer-required-be
-OSQP_Solver::Configuration::Configuration() = default;
+Configuration::Configuration() = default;
 
 // https://stackoverflow.com/questions/53408962/try-to-understand-compiler-error-message-default-member-initializer-required-be
-OSQP_Solver::Info::Info() = default;
+Solver::Info::Info() = default;
 
-OSQP_Solver::OSQP_Solver(const Configuration& configuration):
+/**
+ * \brief Builds an `OSQPSettings` object from the user configuration.
+ *
+ * Maps every `OSQPSettings` field onto the corresponding `Configuration`
+ * member.
+ */
+OSQPSettings Solver::_to_osqp_settings() const
+{
+    OSQPSettings settings;
+
+    // Linear algebra settings
+    settings.device = configuration_.device;
+    settings.linsys_solver = configuration_.linsys_solver;
+
+    // Control settings
+    settings.allocate_solution = configuration_.allocate_solution;
+    settings.verbose = configuration_.verbose;
+    settings.profiler_level = configuration_.profiler_level;
+    settings.warm_starting = configuration_.warm_starting;
+    settings.scaling = configuration_.scaling;
+    settings.polishing = configuration_.polishing;
+
+    // ADMM parameters
+    settings.rho = configuration_.rho;
+    settings.rho_is_vec = configuration_.rho_is_vec;
+    settings.sigma = configuration_.sigma;
+    settings.alpha = configuration_.alpha;
+
+    // CG settings
+    settings.cg_max_iter = configuration_.cg_max_iter;
+    settings.cg_tol_reduction = configuration_.cg_tol_reduction;
+    settings.cg_tol_fraction = configuration_.cg_tol_fraction;
+    settings.cg_precond = configuration_.cg_precond;
+
+    // Adaptive rho logic
+    settings.adaptive_rho = configuration_.adaptive_rho;
+    settings.adaptive_rho_interval = configuration_.adaptive_rho_interval;
+    settings.adaptive_rho_fraction = configuration_.adaptive_rho_fraction;
+    settings.adaptive_rho_tolerance = configuration_.adaptive_rho_tolerance;
+
+    // Termination parameters
+    settings.max_iter = configuration_.max_iter;
+    settings.eps_abs = configuration_.eps_abs;
+    settings.eps_rel = configuration_.eps_rel;
+    settings.eps_prim_inf = configuration_.eps_prim_inf;
+    settings.eps_dual_inf = configuration_.eps_dual_inf;
+    settings.scaled_termination = configuration_.scaled_termination;
+    settings.check_termination = configuration_.check_termination;
+    settings.check_dualgap = configuration_.check_dualgap;
+    settings.time_limit = configuration_.time_limit;
+
+    // Polishing parameters
+    settings.delta = configuration_.delta;
+    settings.polish_refine_iter = configuration_.polish_refine_iter;
+
+    return settings;
+}
+
+Solver::Solver(const Configuration& configuration):
     osqp_solve_first_time_(true),
     osqp_solver_(nullptr),
     configuration_(configuration),
@@ -25,12 +90,12 @@ OSQP_Solver::OSQP_Solver(const Configuration& configuration):
 
 }
 
-OSQP_Solver::~OSQP_Solver()
+Solver::~Solver()
 {
     _cleanup();
 }
 
-void OSQP_Solver::_cleanup()
+void Solver::_cleanup()
 {
     if(osqp_solver_ != nullptr)
     {
@@ -39,23 +104,23 @@ void OSQP_Solver::_cleanup()
     }
 }
 
-std::vector<double> OSQP_Solver::_vectorxd_to_std_vector_double(const VectorXd& vectorxd)
+std::vector<double> Solver::_vectorxd_to_std_vector_double(const VectorXd& vectorxd)
 {
     std::vector<double> vec(vectorxd.data(), vectorxd.data() + vectorxd.rows() * vectorxd.cols());
     return vec;
 }
 
-VectorXd OSQP_Solver::_std_vector_double_to_vectorxd(std::vector<double> std_vector_double) const
+VectorXd Solver::_std_vector_double_to_vectorxd(std::vector<double> std_vector_double) const
 {
     double* ptr = &std_vector_double[0];
     Eigen::Map<Eigen::VectorXd> vec(ptr,std_vector_double.size());
     return vec;
 }
 
-OSQP_Solver::CSCMatrixData OSQP_Solver::_dense_to_csc_upper_triangular(const MatrixXd& M)
+Solver::CSCMatrixData Solver::_dense_to_csc_upper_triangular(const MatrixXd& M)
 {
     if(M.rows()!=M.cols())
-        throw std::runtime_error("OSQP_Solver::_dense_to_csc_upper_triangular(): M must be square. M.rows()="+std::to_string(M.rows())+" but M.cols()="+std::to_string(M.cols())+".");
+        throw std::runtime_error("Solver::_dense_to_csc_upper_triangular(): M must be square. M.rows()="+std::to_string(M.rows())+" but M.cols()="+std::to_string(M.cols())+".");
 
     const OSQPInt n = static_cast<OSQPInt>(M.rows());
 
@@ -80,7 +145,7 @@ OSQP_Solver::CSCMatrixData OSQP_Solver::_dense_to_csc_upper_triangular(const Mat
     return csc;
 }
 
-OSQP_Solver::CSCMatrixData OSQP_Solver::_dense_to_csc(const MatrixXd& M)
+Solver::CSCMatrixData Solver::_dense_to_csc(const MatrixXd& M)
 {
     const OSQPInt rows = static_cast<OSQPInt>(M.rows());
     const OSQPInt cols = static_cast<OSQPInt>(M.cols());
@@ -112,11 +177,11 @@ void evaluate_osqp_exitflag(OSQPInt exitflag, const std::string& context)
 {
     if(exitflag != 0)
     {
-        throw std::runtime_error("OSQP_Solver::solve_quadratic_program(): "+context+" failed. OSQP returned error code "+std::to_string(exitflag)+": "+std::string(osqp_error_message(exitflag)));
+        throw std::runtime_error("Solver::solve_quadratic_program(): "+context+" failed. OSQP returned error code "+std::to_string(exitflag)+": "+std::string(osqp_error_message(exitflag)));
     }
 }
 
-VectorXd OSQP_Solver::solve_quadratic_program(const MatrixXd& H, const VectorXd& f, const MatrixXd& A, const VectorXd& b, const MatrixXd& Aeq, const VectorXd& beq, const VectorXd& x0, const VectorXd& y0)
+VectorXd Solver::solve_quadratic_program(const MatrixXd& H, const VectorXd& f, const MatrixXd& A, const VectorXd& b, const MatrixXd& Aeq, const VectorXd& beq, const VectorXd& x0, const VectorXd& y0)
 {
     const OSQPInt PROBLEM_SIZE = static_cast<OSQPInt>(H.rows());
     const OSQPInt INEQUALITY_CONSTRAINT_SIZE = static_cast<OSQPInt>(b.size());
@@ -126,30 +191,30 @@ VectorXd OSQP_Solver::solve_quadratic_program(const MatrixXd& H, const VectorXd&
     ///Check sizes
     //Objective function
     if(H.rows()!=H.cols())
-        throw std::runtime_error("OSQP_Solver::solve_quadratic_program(): H must be symmetric. H.rows()="+std::to_string(H.rows())+" but H.cols()="+std::to_string(H.cols())+".");
+        throw std::runtime_error("Solver::solve_quadratic_program(): H must be symmetric. H.rows()="+std::to_string(H.rows())+" but H.cols()="+std::to_string(H.cols())+".");
     if(f.size()!=H.rows())
-        throw std::runtime_error("OSQP_Solver::solve_quadratic_program(): f must be compatible with H. H.rows()=H.cols()="+std::to_string(H.rows())+" but f.size()="+std::to_string(f.size())+".");
+        throw std::runtime_error("Solver::solve_quadratic_program(): f must be compatible with H. H.rows()=H.cols()="+std::to_string(H.rows())+" but f.size()="+std::to_string(f.size())+".");
 
     //Optional warm-start (e.g. a known feasible solution) for the primal variable x.
     if(x0.size()!=0 && x0.size()!=PROBLEM_SIZE)
-        throw std::runtime_error("OSQP_Solver::solve_quadratic_program(): x0 must be compatible with H. H.rows()=H.cols()="+std::to_string(H.rows())+" but x0.size()="+std::to_string(x0.size())+".");
+        throw std::runtime_error("Solver::solve_quadratic_program(): x0 must be compatible with H. H.rows()=H.cols()="+std::to_string(H.rows())+" but x0.size()="+std::to_string(x0.size())+".");
 
     //Optional warm-start (e.g. a dual solution obtained from get_info().dual_solution in a
     //previous call) for the dual variable y.
     if(y0.size()!=0 && y0.size()!=TOTAL_CONSTRAINT_SIZE)
-        throw std::runtime_error("OSQP_Solver::solve_quadratic_program(): y0 must be compatible with the total number of constraints. b.size()+beq.size()="+std::to_string(TOTAL_CONSTRAINT_SIZE)+" but y0.size()="+std::to_string(y0.size())+".");
+        throw std::runtime_error("Solver::solve_quadratic_program(): y0 must be compatible with the total number of constraints. b.size()+beq.size()="+std::to_string(TOTAL_CONSTRAINT_SIZE)+" but y0.size()="+std::to_string(y0.size())+".");
 
     //Inequality constraints
     if(b.size()!=A.rows())
-        throw std::runtime_error("OSQP_Solver::solve_quadratic_program(): size of b="+std::to_string(b.size())+" should be compatible with rows of A="+std::to_string(A.rows())+".");
+        throw std::runtime_error("Solver::solve_quadratic_program(): size of b="+std::to_string(b.size())+" should be compatible with rows of A="+std::to_string(A.rows())+".");
     if(INEQUALITY_CONSTRAINT_SIZE!=0 && A.cols()!=PROBLEM_SIZE)
-        throw std::runtime_error("OSQP_Solver::solve_quadratic_program(): A.cols()="+std::to_string(A.cols())+" should be compatible with H.rows()="+std::to_string(PROBLEM_SIZE)+".");
+        throw std::runtime_error("Solver::solve_quadratic_program(): A.cols()="+std::to_string(A.cols())+" should be compatible with H.rows()="+std::to_string(PROBLEM_SIZE)+".");
 
     //Equality constraints
     if(beq.size()!=Aeq.rows())
-        throw std::runtime_error("OSQP_Solver::solve_quadratic_program(): size of beq="+std::to_string(beq.size())+" should be compatible with rows of Aeq="+std::to_string(Aeq.rows())+".");
+        throw std::runtime_error("Solver::solve_quadratic_program(): size of beq="+std::to_string(beq.size())+" should be compatible with rows of Aeq="+std::to_string(Aeq.rows())+".");
     if(EQUALITY_CONSTRAINT_SIZE!=0 && Aeq.cols()!=PROBLEM_SIZE)
-        throw std::runtime_error("OSQP_Solver::solve_quadratic_program(): Aeq.cols()="+std::to_string(Aeq.cols())+" should be compatible with H.rows()="+std::to_string(PROBLEM_SIZE)+".");
+        throw std::runtime_error("Solver::solve_quadratic_program(): Aeq.cols()="+std::to_string(Aeq.cols())+" should be compatible with H.rows()="+std::to_string(PROBLEM_SIZE)+".");
 
     //Stack the inequality and equality constraints into OSQP's single l <= Ax <= u form.
     //Equality rows get l==u==beq. Inequality rows get l=-infinity, u=b.
@@ -189,16 +254,11 @@ VectorXd OSQP_Solver::solve_quadratic_program(const MatrixXd& H, const VectorXd&
 
         OSQPSettings* settings = OSQPSettings_new();
         if(settings == nullptr)
-            throw std::runtime_error("OSQP_Solver::solve_quadratic_program(): unable to allocate OSQPSettings.");
+            throw std::runtime_error("Solver::solve_quadratic_program(): unable to allocate OSQPSettings.");
 
-        settings->max_iter = configuration_.maximum_iterations;
-        settings->eps_abs = configuration_.eps_absolute;
-        settings->eps_rel = configuration_.eps_relative;
-        settings->eps_prim_inf = configuration_.eps_primal_infeasibility;
-        settings->eps_dual_inf = configuration_.eps_dual_infeasibility;
-        settings->verbose = configuration_.verbose;
-        settings->polishing = configuration_.polishing;
-        settings->warm_starting = configuration_.warm_starting;
+        //Overwrite OSQP's defaults with the user's configuration.
+        const OSQPSettings user_settings = _to_osqp_settings();
+        *settings = user_settings;
 
         OSQPCscMatrix* P = OSQPCscMatrix_new(PROBLEM_SIZE, PROBLEM_SIZE, static_cast<OSQPInt>(P_csc.x.size()), P_csc.x.data(), P_csc.i.data(), P_csc.p.data());
         OSQPCscMatrix* A_mat = OSQPCscMatrix_new(TOTAL_CONSTRAINT_SIZE, PROBLEM_SIZE, static_cast<OSQPInt>(A_csc.x.size()), A_csc.x.data(), A_csc.i.data(), A_csc.p.data());
@@ -256,17 +316,17 @@ VectorXd OSQP_Solver::solve_quadratic_program(const MatrixXd& H, const VectorXd&
 
     const OSQPInt status = osqp_solver_->info->status_val;
     if(status != OSQP_SOLVED && status != OSQP_SOLVED_INACCURATE)
-        throw std::runtime_error("OSQP_Solver::solve_quadratic_program(): unable to solve quadratic program. OSQP status: "+std::string(osqp_solver_->info->status));
+        throw std::runtime_error("Solver::solve_quadratic_program(): unable to solve quadratic program. OSQP status: "+std::string(osqp_solver_->info->status));
 
     std::vector<double> return_value_std(osqp_solver_->solution->x, osqp_solver_->solution->x + PROBLEM_SIZE);
 
     return _std_vector_double_to_vectorxd(return_value_std);
 }
 
-OSQP_Solver::Info OSQP_Solver::get_info() const
+Solver::Info Solver::get_info() const
 {
     if(osqp_solver_ == nullptr || osqp_solver_->info == nullptr)
-        throw std::runtime_error("OSQP_Solver::get_info(): no solution information available. solve_quadratic_program() must be called successfully first.");
+        throw std::runtime_error("Solver::get_info(): no solution information available. solve_quadratic_program() must be called successfully first.");
 
     Info info;
     info.obj_val = osqp_solver_->info->obj_val;
@@ -287,14 +347,18 @@ OSQP_Solver::Info OSQP_Solver::get_info() const
 }
 
 // Helper functions to help evaluate the wrapper when needed.
-VectorXd OSQP_Solver::test_vectorxd(const VectorXd& v)
+VectorXd Solver::test_vectorxd(const VectorXd& v)
 {
     return v;
 }
 
-MatrixXd OSQP_Solver::test_matrixxd(const MatrixXd& m)
+MatrixXd Solver::test_matrixxd(const MatrixXd& m)
 {
     return m;
 }
 
-} // namespace M3
+} // namespace osqp
+
+} // namespace solvers
+
+} // namespace marinholab
