@@ -1,0 +1,7 @@
+{
+  "include": ["marinholab"],
+  "pythonVersion": "3.9",
+  "pythonPlatform": "Linux",
+  "useLibraryCodeForTypes": false,
+  "typeCheckingMode": "basic"
+}
