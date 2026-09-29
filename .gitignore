@@ -3,6 +3,8 @@ build/
 dist/
 *.egg-info/
 *.so
+.deb-out/
+obj-*/
 
 # Python caches
 __pycache__/

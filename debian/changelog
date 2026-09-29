@@ -1,0 +1,9 @@
+libmarinholab-solver-osqp (26.09.00) noble; urgency=medium
+
+  * Initial Debian package of the C++ part of the solver-osqp project:
+    the marinholab::solvers::osqp library (Solver + Configuration) and its
+    OSQP dependency, built with CMake and -O3.
+    The pybind11 Python extension is not packaged; it is built by
+    `pip install .`.
+
+ -- Murilo M Marinho <murilomarinho@ieee.org>  Wed, 16 Sep 2026 00:00:00 +0100

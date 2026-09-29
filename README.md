@@ -98,8 +98,8 @@ pybind11 layer over it). It is built with
 namespace osqp = marinholab::solvers::osqp;
 
 osqp::Configuration config;
-config.eps_abs = 1.0e-9;              // the rest keeps its defaults
-config.polishing = 1;
+config.set("eps_abs", 1.0e-9);          // the rest keeps its defaults
+config.set("polishing", true);
 
 osqp::Solver solver(config);
 
@@ -151,17 +151,23 @@ the pybind11 surface in `src/core.cpp`.
 ## Configuration
 
 All of OSQP's `OSQPSettings` fields are exposed, plus one wrapper-specific
-setting. Create a `Configuration`, tweak the fields you need, and pass it to
-the solver:
+setting. Options are set by name. Create a `Configuration`, set the options
+you need, and pass it to the solver:
 
 ```python
 config = osqp.Configuration()
-config.eps_abs = 1.0e-9                    # tighter absolute tolerance
-config.eps_rel = 1.0e-9                    # tighter relative tolerance
-config.max_iter = 20000                    # more ADMM iterations
-config.polishing = 1                       # polish the ADMM solution
+config.set("eps_abs", 1.0e-9)               # tighter absolute tolerance
+config.set("eps_rel", 1.0e-9)               # tighter relative tolerance
+config.set("max_iter", 20000)               # more ADMM iterations
+config.set("polishing", True)               # polish the ADMM solution
 solver = osqp.Solver(config)
 ```
+
+Values may be given as bool, int, float, or str (enum options take the enum
+value name, e.g. `"OSQP_DIRECT_SOLVER"`, or a `LinsysSolverType` member;
+`set()` also converts strings such as `"1e-9"` or `"false"`). Unset options
+keep OSQP's own defaults. `config.keys()` and `config.defaults()` list the
+full option names and their defaults.
 
 The enum types are re-exported for convenience: `osqp.LinsysSolverType`,
 `osqp.PreconditionerType`, and `osqp.Status`.

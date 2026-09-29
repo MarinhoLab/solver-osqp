@@ -3,137 +3,72 @@
 The real module is built from ``src/core.cpp``; this file only exists so that
 type checkers (e.g. Pyright) can understand the public surface of the
 extension without having to parse C++.
+
+The enum types (``LinsysSolverType``, ``PreconditionerType``, ``Status``) are
+provided by the pure-Python module ``_options.py`` and re-exported by the
+package ``__init__.py``; they are not part of the compiled extension.
 """
 
-from enum import IntEnum
+from typing import Union
+
+from collections.abc import Mapping
+from enum import Enum
 
 import numpy as np
 
-
-class LinsysSolverType(IntEnum):
-    """OSQP linear system solvers."""
-
-    OSQP_UNKNOWN_SOLVER: LinsysSolverType
-    OSQP_DIRECT_SOLVER: LinsysSolverType
-    OSQP_INDIRECT_SOLVER: LinsysSolverType
-
-
-class PreconditionerType(IntEnum):
-    """Preconditioners for the conjugate-gradient method."""
-
-    OSQP_NO_PRECONDITIONER: PreconditionerType
-    OSQP_DIAGONAL_PRECONDITIONER: PreconditionerType
-
-
-class Status(IntEnum):
-    """OSQP solver status codes returned for the last solve."""
-
-    OSQP_SOLVED: Status
-    OSQP_SOLVED_INACCURATE: Status
-    OSQP_PRIMAL_INFEASIBLE: Status
-    OSQP_PRIMAL_INFEASIBLE_INACCURATE: Status
-    OSQP_DUAL_INFEASIBLE: Status
-    OSQP_DUAL_INFEASIBLE_INACCURATE: Status
-    OSQP_MAX_ITER_REACHED: Status
-    OSQP_TIME_LIMIT_REACHED: Status
-    OSQP_NON_CVX: Status
-    OSQP_SIGINT: Status
-    OSQP_UNSOLVED: Status
+OptionValue = Union[bool, int, float, str]
+"""An option value: bool, int, float, or an enum value name."""
 
 
 class OSQP_Solver:
-    """High-level, reusable solver for quadratic programs (QPs) based on OSQP.
-
-    Solves ``min(x) 0.5*x'Hx + f'x`` subject to ``Ax <= b`` and
-    ``Aeq*x = beq`` (MATLAB `quadprog`-like signature). Once the problem has
-    been solved once, subsequent solves are warm-started by default (see
-    ``Configuration.use_hotstart``).
-    """
-
-    # Nested aliases so the enums are also reachable as
-    # ``OSQP_Solver.LinsysSolverType`` etc. (matching the runtime layout, where
-    # ``export_values()`` binds them onto the class).
-    LinsysSolverType: type[LinsysSolverType] = LinsysSolverType
-    PreconditionerType: type[PreconditionerType] = PreconditionerType
-    Status: type[Status] = Status
+    """High-level, reusable solver for quadratic programs (QPs) based on OSQP."""
 
     class Configuration:
-        """All user-configurable solver options.
+        """Holder of all user-configurable solver options, keyed by name.
 
-        Members are a 1:1 mapping of OSQP's ``OSQPSettings`` fields (plus the
-        wrapper-specific ``use_hotstart``). Defaults match OSQP's own defaults
-        for a standard double-precision, direct-solver build (see
-        ``osqp_set_default_settings()``); see the C++ header
-        (``include/marinholab/solvers/osqp.h``) and the OSQP documentation
-        (https://osqp.org/docs/) for the meaning of each option.
+        Every OSQP ``OSQPSettings`` field plus the wrapper-specific
+        ``use_hotstart`` is exposed under its name via ``set()``/``get()``.
+        Values are bool, int, float, or str: enum options take the enum value
+        name (e.g. ``"OSQP_DIRECT_SOLVER"``,
+        ``"OSQP_DIAGONAL_PRECONDITIONER"``) or an enum member. ``set()`` also
+        converts strings such as ``"1e-9"`` or ``"false"``. Unset options use
+        OSQP's own defaults for a double-precision, direct-solver build
+        except ``verbose`` (``False``). See ``keys()`` and ``defaults()`` for
+        the full list.
         """
 
-        #: Reuse the existing OSQP solver and update its data in place instead of re-running osqp_setup() when the problem shape is unchanged.
-        use_hotstart: bool
-        #: Device identifier; currently used for CUDA devices.
-        device: int
-        #: Linear system solver to use.
-        linsys_solver: LinsysSolverType
-        #: Whether the solution is allocated during osqp_setup().
-        allocate_solution: int
-        #: Whether solver progress is written out (0 = quiet, the default).
-        verbose: int
-        #: Level of detail for profiler annotations.
-        profiler_level: int
-        #: Whether OSQP warm-starts from the previous solution between consecutive osqp_solve() calls.
-        warm_starting: int
-        #: Number of heuristic data-scaling iterations; 0 disables scaling.
-        scaling: int
-        #: Whether the ADMM solution is polished to improve accuracy.
-        polishing: int
-        #: ADMM penalty parameter (scalar).
-        rho: float
-        #: Whether rho is a scalar or a vector.
-        rho_is_vec: int
-        #: ADMM regularization parameter (improves conditioning).
-        sigma: float
-        #: ADMM relaxation parameter.
-        alpha: float
-        #: Maximum number of CG iterations per solve.
-        cg_max_iter: int
-        #: Number of consecutive zero CG iterations before the tolerance is halved.
-        cg_tol_reduction: int
-        #: CG tolerance, as a fraction of the ADMM residuals.
-        cg_tol_fraction: float
-        #: Preconditioner used by the CG method.
-        cg_precond: PreconditionerType
-        #: ADMM rho stepsize adaptation method.
-        adaptive_rho: int
-        #: Interval between rho adaptations (used with the iterations-based method).
-        adaptive_rho_interval: int
-        #: Adaptation parameter controlling when non-fixed rho adaptations occur.
-        adaptive_rho_fraction: float
-        #: Tolerance applied when adapting rho (min ratio between new and current rho).
-        adaptive_rho_tolerance: float
-        #: Maximum number of ADMM iterations.
-        max_iter: int
-        #: Absolute solution tolerance.
-        eps_abs: float
-        #: Relative solution tolerance.
-        eps_rel: float
-        #: Primal infeasibility detection tolerance.
-        eps_prim_inf: float
-        #: Dual infeasibility detection tolerance.
-        eps_dual_inf: float
-        #: Whether the scaled termination criteria are used.
-        scaled_termination: int
-        #: Interval at which termination is checked; 0 disables the periodic check.
-        check_termination: int
-        #: Whether the duality-gap termination criteria are used.
-        check_dualgap: int
-        #: Maximum time to solve the problem, in seconds.
-        time_limit: float
-        #: Regularization parameter used by polishing.
-        delta: float
-        #: Number of iterative refinement steps performed during polishing.
-        polish_refine_iter: int
-
         def __init__(self) -> None: ...
+
+        def set(self, key: str, value: Union[OptionValue, Enum]) -> None:
+            """Sets the option ``key`` to ``value`` (bool, int, float, str, or an
+            enum member such as ``LinsysSolverType.OSQP_DIRECT_SOLVER``),
+            converted to the option's kind. Raises ValueError for an unknown
+            key or a value that does not convert to that kind."""
+            ...
+
+        def get(self, key: str) -> OptionValue:
+            """Returns the value of ``key``, or its default if not set."""
+            ...
+
+        def has(self, key: str) -> bool:
+            """True if ``key`` has been explicitly set."""
+            ...
+
+        def keys(self) -> list[str]:
+            """Sorted list of all settable option names."""
+            ...
+
+        def defaults(self) -> Mapping[str, OptionValue]:
+            """Mapping of option name -> default value."""
+            ...
+
+        def reset(self, key: str) -> None:
+            """Reverts ``key`` to its default."""
+            ...
+
+        def reset_all(self) -> None:
+            """Reverts every option to its default."""
+            ...
 
     class Info:
         """Solution-quality values obtained from the last successful call to ``solve_quadratic_program()``."""

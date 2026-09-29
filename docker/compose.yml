@@ -8,4 +8,5 @@ services:
     command: /bin/bash -c "
       cd /root/solver-osqp
       && pip install . --break-system-packages
+      && (cd tests && python3 -m pytest -q)
       && osqp_example"

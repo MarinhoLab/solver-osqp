@@ -5,21 +5,28 @@ LGPLv2.1 License
 Public API of the `marinholab.solvers.osqp` package.
 
 `Solver` is a thin, numpy-friendly Python wrapper around the compiled OSQP
-solver (`OSQP_Solver`). The configuration and enum types are re-exported for
-convenience.
+solver (`OSQP_Solver`). The `Configuration` (keyed by option name) and the
+enum types are re-exported for convenience.
+
+The enum types are pure Python (see `_options.py`) so the compiled
+extension's C++ header stays free of OSQP types.
 """
 from .solver import Solver
 # TODO change this mess into inheritance via trampoline class
 # Interface won't change, so this will do for now
 from marinholab.solvers.osqp._core import OSQP_Solver
 
-# Re-exported for convenience so users can write e.g. `osqp.Configuration`
-# and `osqp.OSQP_Solver.Status.OSQP_SOLVED`.
+# The configuration and info, backed by the compiled extension.
 Configuration = OSQP_Solver.Configuration
 Info = OSQP_Solver.Info
-LinsysSolverType = OSQP_Solver.LinsysSolverType
-PreconditionerType = OSQP_Solver.PreconditionerType
-Status = OSQP_Solver.Status
+# The enum types, provided in pure Python so users can still write e.g.
+# `osqp.LinsysSolverType.OSQP_DIRECT_SOLVER` (`Configuration.set` also accepts
+# these members directly).
+from marinholab.solvers.osqp._options import (
+    LinsysSolverType,
+    PreconditionerType,
+    Status,
+)
 
 __all__ = [
     "Solver",
