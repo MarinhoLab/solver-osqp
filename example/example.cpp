@@ -20,12 +20,13 @@ namespace osqp = marinholab::solvers::osqp;
 
 int main()
 {
-    // 1. Configure the solver. Only a couple of fields are set here; the rest
-    //    keep their defaults (which mirror OSQP's own defaults for a standard
-    //    double-precision, direct-solver build; see osqp_set_default_settings()).
+    // 1. Configure the solver. Only a couple of options are set here; the
+    //    rest keep their defaults (which mirror OSQP's own defaults for a
+    //    standard double-precision, direct-solver build; see
+    //    osqp_set_default_settings()).
     osqp::Configuration config;
-    config.eps_abs = 1.0e-9;   // tighter absolute tolerance
-    config.eps_rel = 1.0e-9;   // tighter relative tolerance
+    config.set("eps_abs", 1.0e-9);   // tighter absolute tolerance
+    config.set("eps_rel", 1.0e-9);   // tighter relative tolerance
 
     osqp::Solver solver(config);
 

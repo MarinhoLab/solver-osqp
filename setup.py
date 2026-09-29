@@ -50,6 +50,9 @@ class CMakeBuild(build_ext):
             f"-DPYTHON_EXECUTABLE={sys.executable}",
             f"-DCMAKE_BUILD_TYPE={cfg}"  # not used on MSVC, but no harm
         ]
+        # The CMake default is BUILD_PYTHON=OFF (a C++-only build). The Python
+        # extension must be enabled explicitly for the wheel build.
+        cmake_args += ["-DBUILD_PYTHON=ON"]
         build_args = []
         # Adding CMake arguments set as environment variable
         # (needed e.g. to build for ARM OSx on conda-forge)

@@ -62,9 +62,9 @@ def main():
     # that the level-2 equality constraint that reproduces the level-1 task
     # (Aeq = Jt, beq = Jt @ u1) is enforced much more precisely.
     config = osqp.Configuration()
-    config.eps_abs = 1e-9
-    config.eps_rel = 1e-9
-    config.max_iter = 20000
+    config.set("eps_abs", 1e-9)
+    config.set("eps_rel", 1e-9)
+    config.set("max_iter", 20000)
 
     solver_1 = osqp.Solver(config)  # Level 1: end-effector position control
     solver_2 = osqp.Solver(config)  # Level 2: redundancy resolution

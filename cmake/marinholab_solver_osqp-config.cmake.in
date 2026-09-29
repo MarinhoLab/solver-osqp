@@ -1,0 +1,28 @@
+@PACKAGE_INIT@
+
+include(CMakeFindDependencyMacro)
+# The public header uses Eigen types in its method signatures.
+find_dependency(Eigen3)
+# OSQP is a private implementation detail, not a consumer-facing dependency:
+# its static archive (with its linear-solver embedded) is linked into
+# marinholab_solver_osqp, and the public header marinholab/solvers/osqp.h is
+# OSQP-free, so consumers neither find_package() nor link OSQP directly.
+
+find_library(marinholab_solver_osqp_LIBRARY NAMES marinholab_solver_osqp
+    PATHS "@PACKAGE_LIB_INSTALL_DIR@" NO_DEFAULT_PATH)
+find_path(marinholab_solver_osqp_INCLUDE_DIR NAMES marinholab/solvers/osqp.h
+    PATHS "@PACKAGE_INCLUDE_INSTALL_DIR@" NO_DEFAULT_PATH)
+
+if(marinholab_solver_osqp_LIBRARY AND marinholab_solver_osqp_INCLUDE_DIR)
+    add_library(marinholab::solvers::osqp SHARED IMPORTED)
+    set_target_properties(marinholab::solvers::osqp PROPERTIES
+        IMPORTED_LOCATION "${marinholab_solver_osqp_LIBRARY}"
+        INTERFACE_INCLUDE_DIRECTORIES "${marinholab_solver_osqp_INCLUDE_DIR}"
+        INTERFACE_LINK_LIBRARIES "Eigen3::Eigen")
+endif()
+
+include(FindPackageHandleStandardArgs)
+find_package_handle_standard_args(marinholab_solver_osqp
+    REQUIRED_VARS
+        marinholab_solver_osqp_LIBRARY
+        marinholab_solver_osqp_INCLUDE_DIR)

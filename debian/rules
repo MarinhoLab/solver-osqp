@@ -1,0 +1,20 @@
+#!/usr/bin/make -f
+
+# LTO is disabled (-fno-lto, appended after the distro flags so it wins):
+# Ubuntu noble enables -flto=auto by default, and linking the vendored static
+# OSQP archive into this wrapper can trip a GCC 13 linker internal compiler
+# error on x86-64. It also buys no real benefit for a wrapper this small.
+export CFLAGS   := $(shell dpkg-buildflags --get CFLAGS) -fno-lto
+export CXXFLAGS := $(shell dpkg-buildflags --get CXXFLAGS) -fno-lto
+export CPPFLAGS := $(shell dpkg-buildflags --get CPPFLAGS)
+export LDFLAGS  := $(shell dpkg-buildflags --get LDFLAGS) -fno-lto
+
+%:
+	dh $@ --buildsystem=cmake
+
+override_dh_auto_configure:
+	dh_auto_configure -- \
+		-DCMAKE_BUILD_TYPE=Release \
+		-DCMAKE_CXX_FLAGS_RELEASE="-O3 -DNDEBUG" \
+		-DCMAKE_INSTALL_PREFIX=/usr \
+		-DBUILD_EXAMPLES=OFF

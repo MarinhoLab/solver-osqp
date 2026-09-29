@@ -119,10 +119,10 @@ def main():
     osqp_config = osqp.Configuration()
     # Tighten OSQP's tolerances/enable polishing so that its ADMM solution is
     # directly comparable to qpOASES' active-set solution.
-    osqp_config.eps_abs = 1e-7
-    osqp_config.eps_rel = 1e-7
-    osqp_config.max_iter = 20000
-    osqp_config.polishing = 1
+    osqp_config.set("eps_abs", 1e-7)
+    osqp_config.set("eps_rel", 1e-7)
+    osqp_config.set("max_iter", 20000)
+    osqp_config.set("polishing", True)
 
     all_passed = True
 
