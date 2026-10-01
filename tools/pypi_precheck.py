@@ -39,8 +39,12 @@ PYPI_JSON_URL = "https://pypi.org/pypi/{name}/{version}/json"
 TIMEOUT_S = 30
 
 # PEP 427: {distribution}-{version}(-{build})?-{python}-{abi}-{platform}.whl
+# The version is a maximal run of non-``-``/non-``_`` characters: it is a
+# single character class, so the match is linear-time (the original nested
+# ``(?:\.[^\-_]+)*`` group let the engine re-split dot runs exponentially --
+# CodeQL "Inefficient regular expression").
 WHEEL_FILENAME_RE = re.compile(
-    r"^(?P<n>.+?)-(?P<version>[^\-_]+(?:\.[^\-_]+)*)(?:-(?P<build>\d+[-\w]*))?"
+    r"^(?P<n>.+?)-(?P<version>[^\-_]+)(?:-(?P<build>\d+[-\w]*))?"
     r"-(?P<python>\w+)-(?P<abi>\w+)-(?P<platform>\w+)\.whl$"
 )
 
