@@ -6,9 +6,15 @@ dist/
 .deb-out/
 obj-*/
 
+# Benchmark output (bench/*.sh, bench/*.py are the harness; these are its output)
+bench/bin/
+bench/gen/
+bench/results/
+
 # Python caches
 __pycache__/
 *.py[cod]
+.pytest_cache/
 
 # npm (e.g. locally installed pyright)
 node_modules/
