@@ -17,35 +17,42 @@ CMake option).
   So the shipped wheel is already built at `-O3` everywhere.
 * Going from `-O3` to `-O2`/`-O1` is **not** a speedup, and `-march=native`
   and `-flto` give **no measurable gain** on this workload.
-* The one flag that moves the needle is **`-ffast-math`** (a.k.a. the
-  fast-math part of `-Ofast`): it makes the C OSQP core ~**25–30% faster** in
-  the steady-state ADMM loop. Because the dense-matrix→CSC conversion in the
-  wrapper is a large, fast-math-insensitive cost, the end-to-end Python solve
-  time improves by a more modest ~**4–8%**.
+* The one flag that *can* move the needle is **`-ffast-math`** (a.k.a. the
+  fast-math part of `-Ofast`). Its effect is **compiler-specific**:
+  * **Apple clang 21** — ~**25–30% faster** C core in the steady-state ADMM
+    loop. Because the wrapper's dense-matrix→CSC conversion is a large,
+    fast-math-insensitive cost, the end-to-end Python solve improves by a more
+    modest ~**4–8%**.
+  * **GCC 16** — *slower* (~**15–18% worse**). GCC's fast-math reassociation
+    hurts the ADMM loop on this workload.
+  This cross-compiler disagreement is the single strongest argument for **not**
+  turning fast-math on by default.
 * `-ffast-math` relaxes IEEE-754. It does **not** change the solutions this
   package produces in the tests or example (answers are identical to the `-O3`
   build, with only machine-precision-level differences in residuals), because
   OSQP is an iterative solver that runs to a tolerance.
 
 **Decision:** keep the default build at the IEEE-conformant `-O3` (matching
-OSQP's own default), and expose the fast-math option as an **opt-in** CMake
-flag, `OSQP_OPT_FAST_MATH` (OFF by default), so a consumer who can tolerate the
-relaxed floating-point contract can opt into the speedup without changing the
-shipped wheel.
+OSQP's own default, and the best cross-compiler choice), and expose fast-math as
+an **opt-in** CMake flag, `OSQP_OPT_FAST_MATH` (OFF by default). A consumer on a
+clang toolchain who can tolerate the relaxed floating-point contract can opt in
+to the speedup; the shipped wheel and CI are unaffected.
 
 ## Environment
 
 | Item | Value |
 | --- | --- |
 | Host | Apple M2, arm64 (macOS) |
-| Compiler | Apple clang 21 (`cc`; `gcc`/`g++` are clang on macOS) |
+| Compiler (clang) | Apple clang 21 (`cc`; on macOS the default `gcc`/`g++` are clang) |
+| Compiler (gcc) | Homebrew `gcc-16` / `g++-16` (GNU 16.2.0) — a real g++/gcc data point |
 | OSQP | submodule `1572ae06` (≈ v1.0.0) |
 | qdldl | submodule `138fdac58` (v0.1.8) |
 | pybind11 | submodule `d03662f0` (v3.0) |
 | Python | 3.12 |
 
 The numbers below are from this host; relative ratios are what matter, and the
-harness is included so results can be re-produced on any machine.
+harness is included so results can be re-produced on any machine. Where the two
+compilers disagree (fast-math), both are reported.
 
 ## Methodology
 
@@ -88,7 +95,9 @@ All variants share `-DNDEBUG`; the `-O` level is the variable under test.
 
 Measured on the Apple M2 host above. Times are per-solve (small, n=800) and per
 solve / per setup (large, n=2500), averaged over the reps shown. Ratios are
-relative to the `-O3` default.
+relative to each compiler's `-O3` default.
+
+### Apple clang 21
 
 | Variant | small solve (s) | × vs `-O3` | large solve (s) | × vs `-O3` | large setup (s) | × vs `-O3` |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: |
@@ -100,6 +109,25 @@ relative to the `-O3` default.
 | `-O3 -march=native` | 0.030308 | 1.00× | 0.294269 | 1.00× | 1.447293 | 1.01× |
 | `-O3 -march=native -flto` | 0.030423 | 1.00× | 0.293481 | 0.99× | 1.444066 | 1.01× |
 | `-Ofast -march=native -flto` | **0.020922** | **0.69×** | **0.209276** | **0.71×** | **1.422635** | **0.99×** |
+
+### GCC 16.2 (`gcc-16` / `g++-16`)
+
+| Variant | small solve (s) | × vs `-O3` | large solve (s) | × vs `-O3` |
+| --- | ---: | ---: | ---: | ---: |
+| `-O0`        | 0.095282 | 3.68× | 0.911597 | 3.57× |
+| `-O1`        | 0.027455 | 1.06× | 0.266503 | 1.04× |
+| `-O2`        | 0.025833 | 1.00× | 0.253390 | 0.99× |
+| `-O3` (def)  | 0.025879 | 1.00× | 0.255678 | 1.00× |
+| `-Ofast`     | **0.030271** | **1.17×** | **0.294474** | **1.15×** |
+| `-O3 -march=native` | 0.025973 | 1.00× | 0.252121 | 0.99× |
+| `-O3 -march=native -flto` | 0.026017 | 1.00× | 0.253238 | 0.99× |
+| `-Ofast -march=native -flto` | **0.030488** | **1.18×** | **0.292212** | **1.14×** |
+
+**Cross-compiler note.** Both compilers agree that `-O3` is the best non-fast
+level and that `-march=native`/`-flto` do nothing. They *disagree* on
+fast-math: clang 21 is ~30% faster, while **GCC 16 is ~15–18% slower** with
+`-Ofast`/`-ffast-math`. So fast-math is a compiler-specific gamble, not a
+universal win — reinforcing that it should stay opt-in and OFF by default.
 
 All variants report the same objective values (`small = -0.130387`,
 `large = -0.129698`) and identical status/residuals to within machine precision —
@@ -135,10 +163,12 @@ grows.
    reproducibility.) `-march=native` additionally breaks the manylinux
    portability of the wheel, so it is not appropriate to enable by default.
 
-3. **`-ffast-math` is the real lever, worth ~25–30% in the solver core.**
-   It enables the fast-math floating-point contract, which lets the compiler
-   reassociate and vectorize the ADMM inner-loop arithmetic. Two subtleties
-   verified experimentally:
+3. **Fast-math is the only real lever — but it is compiler-specific.** It
+   enables the fast-math floating-point contract, which lets the compiler
+   reassociate and vectorize the ADMM inner-loop arithmetic. On this host
+   **clang 21 is ~30% faster** with it, while **GCC 16 is ~15–18% slower** —
+   so it is a gamble, not a universal win. Two subtleties verified
+   experimentally:
    * The vendored OSQP/qdldl CMake files **append** an `-O3` after any flag you
      inject, and in GCC/Clang the *last* `-O` wins. A bare `-Ofast` therefore
      gets overridden by the trailing `-O3` and does nothing (measured:
@@ -196,6 +226,9 @@ git submodule update --init --recursive
 # Build + run every variant and aggregate a table:
 ./bench/run.sh
 ./bench/aggregate.py
+
+# Use a different compiler (e.g. a real g++/gcc) by exporting CC:
+CC=/opt/homebrew/bin/gcc-16 ./bench/build.sh o3
 ```
 
 The harness lives in `bench/`:
