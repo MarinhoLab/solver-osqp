@@ -49,6 +49,28 @@ set(OSQP_CODEGEN FALSE CACHE BOOL "x" FORCE)
 # FetchContent. Point that at the vendored submodule so no network access is
 # needed at configure time (reproducible, offline-friendly builds).
 set(FETCHCONTENT_SOURCE_DIR_QDLDL "${CMAKE_CURRENT_SOURCE_DIR}/qdldl" CACHE STRING "x")
+
+# Opt-in fast-math. Relaxes IEEE-754 (allows -ffast-math / /fp:fast), which the
+# ADMM inner loop benefits from. See BENCHMARK.md for the numbers. OFF by
+# default so the shipped wheel stays IEEE-conformant; a consumer that can
+# tolerate the (negligible for QP solving) precision change can build with
+# -DOSQP_OPT_FAST_MATH=ON to get a meaningful speed-up.
+#
+# The flag is appended to the *base* C/CXX flags before the OSQP subdirectory
+# is added, so it propagates into the vendored OSQP and qdldl (whose CMake
+# files append an optimization level afterwards). -ffast-math is independent of
+# the -O level, so it survives that append; a bare -Ofast would not.
+option(OSQP_OPT_FAST_MATH "Enable fast-math (non-IEEE) optimizations in the OSQP core." OFF)
+if(OSQP_OPT_FAST_MATH)
+    if(MSVC)
+        set(_SOLVER_OSQP_FAST_MATH_FLAGS "/fp:fast")
+    else()
+        set(_SOLVER_OSQP_FAST_MATH_FLAGS "-ffast-math")
+    endif()
+    string(APPEND CMAKE_C_FLAGS " ${_SOLVER_OSQP_FAST_MATH_FLAGS}")
+    string(APPEND CMAKE_CXX_FLAGS " ${_SOLVER_OSQP_FAST_MATH_FLAGS}")
+endif()
+
 add_subdirectory(osqp)
 
 # The Solver/Configuration implementation. Both the pybind11 module and the
