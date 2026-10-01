@@ -53,16 +53,32 @@ jobs:
           name: debian-packages-${{ matrix.os }}-${{ matrix.python-version }}
           path: dist/
 
-
   upload:
-      needs: build
-      runs-on: ubuntu-latest
-      permissions:
-        id-token: write
-      steps:
-        - uses: actions/download-artifact@v4 # Download all artifacts
-          with:
-            path: dist/
-            merge-multiple: true
-        - name: Publish package distributions to PyPI
-          uses: pypa/gh-action-pypi-publish@release/v1
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+    steps:
+      - uses: actions/checkout@v3
+      - name: Set up Python 3.12 (for the PyPI pre-check)
+        uses: actions/setup-python@v2
+        with:
+          python-version: '3.12'
+      - uses: actions/download-artifact@v4 # Download all artifacts
+        with:
+          path: dist/
+          merge-multiple: true
+      # Only publish from the default branch or a manual dispatch: publishing
+      # from PR runs (OIDC is available on same-repo pull_request events) races
+      # the main push and is what made stale versions reach PyPI.
+      - name: Pre-check PyPI for already-published versions
+        id: pypi-precheck
+        if: github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch'
+        run: python3 tools/pypi_precheck.py dist/
+      - name: Publish package distributions to PyPI
+        if: >-
+          (github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch')
+          && steps.pypi-precheck.outputs.all-identical != 'true'
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          skip-existing: true
