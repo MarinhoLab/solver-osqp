@@ -6,14 +6,20 @@ find_dependency(Eigen3)
 # OSQP is a private implementation detail, not a consumer-facing dependency:
 # its static archive (with its linear-solver embedded) is linked into
 # marinholab_solver_osqp, and the public header marinholab/solvers/osqp.h is
-# OSQP-free, so consumers neither find_package() nor link OSQP directly.
+# OSQP-free, so consumers neither find_package() nor link OSQP directly. Its
+# headers ship in the same include directory, so a consumer that reaches for
+# <osqp.h> still finds it.
 
 find_library(marinholab_solver_osqp_LIBRARY NAMES marinholab_solver_osqp
     PATHS "@PACKAGE_LIB_INSTALL_DIR@" NO_DEFAULT_PATH)
 find_path(marinholab_solver_osqp_INCLUDE_DIR NAMES marinholab/solvers/osqp.h
     PATHS "@PACKAGE_INCLUDE_INSTALL_DIR@" NO_DEFAULT_PATH)
 
-if(marinholab_solver_osqp_LIBRARY AND marinholab_solver_osqp_INCLUDE_DIR)
+# The target is created only if it does not exist yet: this file is re-processed
+# on every find_package() call, so creating it unconditionally aborts with
+# "another target with the same name already exists" in any project that
+# resolves the package more than once.
+if(marinholab_solver_osqp_LIBRARY AND marinholab_solver_osqp_INCLUDE_DIR AND NOT TARGET marinholab::solvers::osqp)
     add_library(marinholab::solvers::osqp SHARED IMPORTED)
     set_target_properties(marinholab::solvers::osqp PROPERTIES
         IMPORTED_LOCATION "${marinholab_solver_osqp_LIBRARY}"

@@ -26,7 +26,10 @@ mkdir -p "${OUT}"
 
 WORKDIR="/opt/solver-osqp"
 if [ "${TEST}" -eq 1 ]; then
-    # Build the package, install it, then build/run a find_package consumer.
+    # Build the package, install it, then build/run the docker/consumer project
+    # against the installed files. DUPLICATE_FIND_PACKAGE=ON resolves the
+    # package a second time as well, which catches a config file that is not
+    # re-entrant.
     docker run --rm -v "${OUT}:/deb-out" "${IMAGE}:${TAG}" bash -c "
         set -euxo pipefail
         cd ${WORKDIR}
@@ -34,35 +37,9 @@ if [ "${TEST}" -eq 1 ]; then
         dpkg-buildpackage -us -uc -b
         DEB=\$(ls /opt/*.deb | head -n1)
         dpkg -i \"\${DEB}\"
-        mkdir -p /tmp/consumer && cd /tmp/consumer
-        cat > main.cpp <<'EOF'
-#include <marinholab/solvers/osqp.h>
-#include <iostream>
-namespace osqp = marinholab::solvers::osqp;
-int main()
-{
-    osqp::Configuration config;
-    config.set(\"eps_abs\", 1.0e-9);
-    osqp::Solver solver(config);
-    Eigen::MatrixXd H = Eigen::MatrixXd::Identity(2, 2);
-    Eigen::VectorXd f(2); f << -1.0, -1.0;
-    Eigen::MatrixXd A(1, 2); A << 1.0, 0.0;
-    Eigen::VectorXd b(1); b << 0.2;
-    Eigen::MatrixXd Aeq = Eigen::MatrixXd::Zero(1, 2);
-    Eigen::VectorXd beq = Eigen::VectorXd::Zero(1);
-    Eigen::VectorXd x = solver.solve_quadratic_program(H, f, A, b, Aeq, beq);
-    std::cout << \"consumer x = \" << x.transpose() << std::endl;
-    return 0;
-}
-EOF
-        cat > CMakeLists.txt <<'EOF'
-cmake_minimum_required(VERSION 3.16)
-project(consumer CXX)
-find_package(marinholab_solver_osqp REQUIRED)
-add_executable(consumer main.cpp)
-target_link_libraries(consumer PRIVATE marinholab::solvers::osqp)
-EOF
-        cmake -B b -DCMAKE_BUILD_TYPE=Release . && cmake --build b && ./b/consumer
+        cmake -S docker/consumer -B /tmp/consumer/build -DDUPLICATE_FIND_PACKAGE=ON
+        cmake --build /tmp/consumer/build
+        /tmp/consumer/build/consumer
         cp \"\${DEB}\" /deb-out/
     "
 else
