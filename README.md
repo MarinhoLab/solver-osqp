@@ -5,9 +5,64 @@ binaries. It exposes OSQP's first-order ADMM solver through a thin,
 numpy-friendly, MATLAB-`quadprog`-like interface, in the C++ namespace
 `marinholab::solvers::osqp` and the Python package `marinholab.solvers.osqp`.
 
+## Installation
+
+### Python (PyPI)
+
 ```console
 pip install marinholab-solvers-osqp
 ```
+
+### C++ (Ubuntu `.deb` from the SmartArmStack PPA)
+
+The C++ part (`marinholab::solvers::osqp`, with OSQP bundled) is distributed as
+the `libmarinholab-solver-osqp` `.deb` from the
+[SmartArmStack](https://smartarmstack.github.io) APT repository hosted at
+`smartarmstack.github.io`. On Ubuntu (Noble/24.04), add it and install:
+
+```console
+sudo apt-get install -y --no-install-recommends curl ca-certificates gnupg
+curl -s --compressed "https://smartarmstack.github.io/smart_arm_stack_ROS2/KEY.gpg" \
+    | gpg --dearmor \
+    | sudo tee /etc/apt/trusted.gpg.d/smartarmstack_lgpl.gpg >/dev/null
+curl -s --compressed "https://smartarmstack.github.io/smart_arm_stack_ROS2/smartarmstack_lgpl.list" \
+    | sudo tee /etc/apt/sources.list.d/smartarmstack_lgpl.list >/dev/null
+sudo apt-get update
+sudo apt-get install -y libmarinholab-solver-osqp
+```
+
+`curl`, `ca-certificates` and `gnupg` are installed first because a bare Ubuntu
+(and every `ubuntu:` Docker image) ships without them: `gpg` is what dearmors
+the signing key -- apt cannot read the armored `KEY.gpg` directly -- and `sudo`
+is absent from containers, where the commands should instead be run as root
+without the `sudo` prefix.
+
+This is the same repository the SmartArmStack ROS2 packages come from; see
+[smartarmstack.github.io](https://smartarmstack.github.io) for the full list
+of available packages.
+
+Building against it needs the toolchain and Eigen (the public header exposes
+Eigen types in its API):
+
+```console
+sudo apt-get install -y --no-install-recommends build-essential cmake libeigen3-dev
+```
+
+Then, in your `CMakeLists.txt`:
+
+```cmake
+find_package(marinholab_solver_osqp REQUIRED)
+target_link_libraries(your_target PRIVATE marinholab::solvers::osqp)
+```
+
+The package links nothing but libc/libstdc++/libm at run time -- OSQP and its
+linear-solver are bundled statically -- so it does not need to be able to
+`find_package(osqp)`.
+
+[`docker/consumer/`](docker/consumer) is a small working project that does
+exactly this and checks the numbers it gets back. `bash docker/test-ppa.sh`
+builds it in a clean container against the published package, and
+`bash docker/build-deb.sh --test` does the same against a locally built `.deb`.
 
 ## Overview
 

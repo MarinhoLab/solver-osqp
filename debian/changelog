@@ -1,3 +1,16 @@
+libmarinholab-solver-osqp (26.10.00) noble; urgency=medium
+
+  * Fix CMake package config: the imported target is now created only
+    when it does not exist, so calling find_package() more than once (a
+    superbuild, or several components) no longer aborts with "another
+    target with the same name already exists". Add the vendored OSQP
+    with EXCLUDE_FROM_ALL so the package no longer ships libosqpstatic.a
+    and cmake/osqp/, whose exported targets resolved find_package(osqp)
+    from any other project on the machine onto this private copy; the
+    OSQP and qdldl headers are installed by this project instead.
+
+ -- Murilo M Marinho <murilomarinho@ieee.org>  Thu, 15 Oct 2026 05:52:07 +0000
+
 libmarinholab-solver-osqp (26.09.00) noble; urgency=medium
 
   * Initial Debian package of the C++ part of the solver-osqp project:

@@ -23,6 +23,7 @@ Description: C++ OSQP ADMM solver wrapper (marinholab)
  It is built with CMake (with -O3) and exposes the CMake target
  marinholab::solvers::osqp. The OSQP dependency (osqp/osqp) is vendored as a
  git submodule, built as a static archive (its linear-solver, qdldl, is
- embedded), and bundled into the same package. The pybind11 Python extension
- is intentionally NOT part of this package; it is produced by `pip install .`
- from the same source tree.
+ embedded) and linked into this library, so nothing of OSQP's own CMake package
+ is installed and consumers never find_package() it. The pybind11 Python
+ extension is intentionally NOT part of this package; it is produced by
+ `pip install .` from the same source tree.

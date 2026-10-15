@@ -183,18 +183,26 @@ bash docker/build-deb.sh --test     # + install it and build/run a
 ```
 
 Only the C++ part is packaged (the `marinholab::solvers::osqp` library). The
-vendored OSQP (with its linear-solver, qdldl, embedded) is built **static**
-and bundled into the same package, so the `.deb` depends only on the C++
-runtime (`libc6`, `libgcc-s1`, `libstdc++6`). `debian/rules` appends `-fno-lto`
-after the `dpkg-buildflags` defaults: Ubuntu noble enables `-flto=auto`, and
+vendored OSQP (with its linear-solver, qdldl, embedded) is built **static** and
+**linked into** that library, so the `.deb` depends only on the C++ runtime
+(`libc6`, `libgcc-s1`, `libstdc++6`). `debian/rules` appends `-fno-lto` after
+the `dpkg-buildflags` defaults: Ubuntu noble enables `-flto=auto`, and
 LTO is disabled for reproducibility.
 
-The `.deb` carries `libmarinholab_solver_osqp.so`, the bundled
-`libosqpstatic.a`, the OSQP-free public header, the CMake package config
-(`find_package(marinholab_solver_osqp)`) and the vendored OSQP/qdldl headers
-(which are only needed to build the archive; they are not a consumer-facing
-API). The pybind11 Python extension is intentionally NOT part of this
-package; it is produced by `pip install .` from the same source tree.
+The `.deb` carries `libmarinholab_solver_osqp.so`, the OSQP-free public header,
+the CMake package config (`find_package(marinholab_solver_osqp)`) and the
+vendored OSQP/qdldl headers. It does **not** ship the OSQP archive or a
+`cmake/osqp/` package: OSQP is added with `EXCLUDE_FROM_ALL`, so its own install
+rules never run. Shipping them would claim the `osqp` package name system-wide,
+and a `find_package(osqp)` from any other project on the machine would then
+resolve onto this private copy. The pybind11 Python extension is intentionally
+NOT part of this package; it is produced by `pip install .` from the same source
+tree.
+
+Consumption is tested by `docker/consumer`, a standalone downstream project that
+uses only `find_package()` + the imported target and checks the solutions it
+gets back. `DUPLICATE_FIND_PACKAGE=ON` resolves the package twice, which is what
+catches a config file that is not re-entrant.
 
 ## Version
 

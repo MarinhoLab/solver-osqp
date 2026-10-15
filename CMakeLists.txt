@@ -71,7 +71,14 @@ if(OSQP_OPT_FAST_MATH)
     string(APPEND CMAKE_CXX_FLAGS " ${_SOLVER_OSQP_FAST_MATH_FLAGS}")
 endif()
 
-add_subdirectory(osqp)
+# EXCLUDE_FROM_ALL: OSQP is still built (marinholab_osqp links it PRIVATE), but
+# its install rules are skipped, so the package does not also ship
+# libosqpstatic.a and a global cmake/osqp/ export set that would claim the OSQP
+# package name on the machine -- find_package(osqp) from any other project on
+# the system would then resolve onto this private copy. OSQP is a private
+# dependency here, not something consumers find_package(); its headers are
+# installed explicitly below instead.
+add_subdirectory(osqp EXCLUDE_FROM_ALL)
 
 # The Solver/Configuration implementation. Both the pybind11 module and the
 # standalone example link against it, so the C++ code is compiled exactly once.
@@ -137,6 +144,22 @@ install(TARGETS marinholab_osqp
         RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
 
 install(DIRECTORY include/ DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
+
+# The vendored OSQP/qdldl install rules are excluded above, so their headers are
+# installed here instead -- same destination (${CMAKE_INSTALL_INCLUDEDIR}/osqp
+# and .../qdldl) as before, but without their archives and CMake package files.
+install(DIRECTORY
+        ${osqp_SOURCE_DIR}/include/public/
+        ${osqp_BINARY_DIR}/include/public/
+        DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/osqp
+        FILES_MATCHING PATTERN "*.h")
+if(DEFINED qdldl_SOURCE_DIR)  # absent if a backend other than qdldl is selected
+    install(DIRECTORY
+            ${qdldl_SOURCE_DIR}/include/
+            ${qdldl_BINARY_DIR}/include/
+            DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/qdldl
+            FILES_MATCHING PATTERN "*.h")
+endif()
 
 if(BUILD_EXAMPLES)
     install(TARGETS example_osqp RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
